@@ -1,0 +1,260 @@
+---
+title: "Time series of carbon dioxide emissions in the United States using the ARIMA(p,d,q) model"
+author: "Iully Cegovia Rodrigues"
+date: "March 31st, 2023"
+output:
+  word_document: default
+  pdf_word:
+    toc: yes
+    fig_caption: yes
+bibliography: references.bib
+csl: "begell-house-apa.csl"
+link_citation: yes
+subtitle: European University Viadrina Frankfurt (Oder)
+---
+
+# Introduction
+
+Global warming has been a widely debated and researched topic since the end of the last century. @J1988 first reported a considerable increase in the earth’s average temperature and pointed out that one of the factors for this phenomenon is the emission of carbon dioxide (CO²) in high quantities into the atmosphere, besides other pollutants gases. The potential risks of global warming can already be seen by observing natural phenomena such as tsunamis, melting glaciers and rising sea levels [@J2021]. In order to avoid the possible increase of the earth's temperature by 2 degrees Celsius, it is necessary to take measures to reduce the emission of pollutants into the atmosphere [@D2009].
+
+According to the Intergovernmental Panel for Climate Change @IPCC2014, studies tracking the increase in the emission of gases into the atmosphere show that human impact substantially helps heat waves to occur in certain areas. These heat waves, in turn, are predicted to have long-term consequences for nature.  Since 1992, when it was realised that emerging countries would be the most affected by global warming, most industrialised countries have decided to commit themselves to reduce their pollution emissions and creating a fund for climate adaptation costs [@D2009]. 
+
+The United States (US) is the second largest CO² emitter with 4.59 Gt of global emissions in 2019, second only to China with 10.06 Gt as per @CW. Despite being one of the biggest contributors of harmful gases, the position of the USA in relation to global warming has varied a lot since the Kyoto Treaty, the first agreement to reduce pollution in 1992, where the country initially signed the agreement and later withdrew [@D2009]. More recently in 2016, the Paris Agreement emerged as a treaty that treats decarbonisation policy not only as a climate issue but also as an economic one, with the adoption of technological measures to help achieve the expected goal [@F2019]. Similar to the first Kyoto agreement, the US later withdrew its participation, only returning in 2021 under the current administration.
+
+Furthermore, the current administration is proposing to reduce green gas emissions by 50-52% below 2005 levels by 2030 and, most importantly, to achieve the goal of 100% carbon-free electricity as of @USG. This topic is returned to later in the paper.
+
+Given all the data and stated objectives, this research study seeks to forecast future CO² emissions in the United States using the ARIMA(p,d,q) model. 
+
+```{r ,include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(tinytex)
+library(pandoc)
+library(float)
+library(WDI)
+library(tidyverse)
+library(dplyr)
+library(haven)
+library(tseries)
+library(forecast)
+library(knitr)
+
+df <-  WDI(indicator= c("EN.ATM.CO2E.GF.KT",
+"EN.ATM.CO2E.SF.KT", "EN.ATM.CO2E.LF.KT"), country="US", start = 1960, end = 2016)
+clean_df <- df %>% select(-iso2c, -iso3c) 
+    clean_df$year <- as.Date(as.character(clean_df$year), format="%Y")
+    tsdf <- rowSums(clean_df[, c(3,4,5)])
+    tsdf <- data.frame(tsdf)
+```
+
+```{r ,include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+co2ts <- ts(tsdf, start = 1960, end = 2016, frequency = 1)
+co2ts
+```
+
+# Visualising CO2 emissions throughout the years
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 1: CO2 Emissions in the United States"}
+knitr::opts_chunk$set(fig.pos = "H")
+
+plot(co2ts, col = "blue", ylab = "CO2 emissions in kt", 
+      main = "CO2 emissions in the USA between 1960-2016", xlab = "Year", type ="o", pch = 20,
+      panel.first = grid (),  xaxt = "n")
+axis(1, at = seq (from = 1960, to = 2016)) 
+```
+
+# Data
+
+The data were taken from World Bank, in the World Development Indicator (WDI) section.
+The total CO² emissions were taken from total emissions in solid, gas and liquid form during the period of 1960-2016.
+
+# ARIMA Model
+
+The autoregressive integral sliding average model, or ARIMA model, is a commonly used forecasting model using a combination of the autoregressive (AR) model and the moving average (MA) model to predict nonstationary sequences, i.e., the mean and variance do not change over time [@Z2023]. The ARIMA model has three parameters ARIMA(p, d, q) that are defined by the following factors:
+
+1.	To be able to predict a sequence n, it is necessary to reach its stationarity, i.e., it is necessary to take the differential of the time series until a stable sequence is obtained. This value corresponds to the parameter **d** and is usually between 0, 1 and 2.
+
+2.	The parameter **p** corresponds to the AR model which regresses the time series using its past values. These values will be determined using the partial autocorrelation coefficient (PACF).
+
+3.	The parameter **q** corresponds to the MA model where the time series with the residuals (errors) of past observations. The visualization of this model can also be achieved through the autocorrelation coefficient (ACF).
+To test the necessity of transforming the time series into stationary, there are some tests that can be performed to check unit roots and observe if there is any dependency in the sequence. 
+
+
+## Stationarity and unit roots tests
+
+The most usual test is the Augmented Dickey-Fuller Test or more commonly called the ADF test. This test is based on the presence of unit roots [@Z2023] and if present in the sequence, it is necessary to keep differentiating until it is not possible to identify unit roots present.  In this paper, the Phillips-Perron Unit Root Test will also be utilised which also has the function of identifying unit roots, as well as the Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test which is used to identify stationarity in time series [@M2023]. 
+
+For PP and ADF tests, it is assumed that the null hypothesis in the series is non-stationary. That is, if p-value >0.05 the null hypothesis is accepted and if p-value is <0.05 the null hypothesis is rejected. The difference between these two tests and KPSS is that in this model, the null hypothesis assumes that the series is stationary.
+In addition, the ARIMA(p,d,q) model is estimated according to parameters such as AIC (Akaike's Information Criteria) which is an estimator that predicts error thus defining the quality of the chosen model. As well as AIC, the parameter BIC (Bayesian Information Criterion) is an estimator that is similarly based on the likelihood function.
+
+The Box-Pierce test is a simplified version of the Ljung-Box test and it is commonly applied in econometrics to determine whether there exists an autocorrelation in the time series [@D2022]. The application of this statistical test will be conducted after selecting the ARIMA(p,d,q) model to verify if there is still an autocorrelation in the residuals. If the p-value is < 0.05, it could be a signal that the time series could not be following the white noise process, i.e. it does not have a zero mean or is autocorrelated [@N2019]. 
+
+
+# Model Evaluation
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 2: Stationarity Evaluation"}
+adf.test(co2ts); pp.test(co2ts); kpss.test(co2ts) 
+tsdisplay(co2ts, main = "Time plot, ACF and PACF levels")
+```
+
+The above results indicate that the Augmented Dickey-Fuller Test and Phillips-Perron Unit Root Test have a higher p-value showing that the data is not stationary as the high p-value fails to reject the null stationary hypothesis. The KPSS test shows that there is a presence of unit root. 
+
+The ACF decays slowly as it has significant spikes in higher lags and the PACF has a sharp cut after the first lag. 
+It is necessary to take the first and second differences in order to achieve stationarity. 
+
+### 1st Difference Correlogram and Stationarity Test
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 3: 1st Difference of the Series"}
+adf.test(diff(co2ts)); pp.test(diff(co2ts)); kpss.test(diff(co2ts)) 
+tsdisplay(diff(co2ts), main = "1st difference of time series")
+```
+
+### Second Difference Correlogram and Stationarity Test
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 4: 2nd Difference of the Series"}
+adf.test(diff(diff(co2ts))); pp.test(diff(diff(co2ts))); kpss.test(diff(diff(co2ts))) 
+tsdisplay(diff(diff(co2ts)), main = "2nd difference of time series")
+```
+
+The ADF and PP tests have a p-value <0.05 i.e. it does not confirm the existence of remaining unit roots. The KPSS test does not reject the stationarity of the series, confirming that d = 2. 
+
+The PACF might suggest AR(0) and ACF suggests either MA(2) or MA(3). It is necessary to further investigate the most appropriate values to fit the model. 
+
+# Evaluation of ARIMA Model
+
+```{r ,include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+arimaModel <- auto.arima(co2ts, trace = TRUE, stepwise = FALSE, approximation = FALSE, seasonal = FALSE)
+```
+
+```{r arimamodel,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Table 1: ARIMA Models"}
+kable(arimamodel <- data.frame(Model = c("ARIMA(0,2,0)", "ARIMA(0,2,1)", "ARIMA(0,2,2)", "ARIMA(0,2,3)", "ARIMA(0,2,4)", "ARIMA(0,2,5)", "ARIMA(1,2,0)", "ARIMA(1,2,1)", "ARIMA(1,2,2)", "ARIMA(1,2,3)", "ARIMA(1,2,4)", "ARIMA (2,2,0)", "ARIMA(2,2,1)", "ARIMA(2,2,2)", "ARIMA(3,2,0)", "ARIMA(3,2,1)", "ARIMA(3,2,2)", "ARIMA(4,2,0)", "ARIMA(4,2,1)", "ARIMA(5,2,0)"), 
+AIC = c("1474.665", "1459.462", "1456.083", "1455.762", "1457.993", "1460.085", "1473.045", "1459.256", "1456.011",
+"1458.11",
+"1460.195",
+"1459.181",
+"1458.969",
+"1457.772",
+"1461.449",
+"1458.452",
+"1459.539",
+"1460.733",
+"1459.69",
+"1462.279")))
+```
+
+A recommended model is a model that has the lowest AIC [@N2019]. Therefore, the recommended ARIMA model is ARIMA (0,2,3) which is consistent with the second difference correlogram. 
+
+In order to check the validity of the test, a Ljung-Box Q-test will be performed and check if the residuals are independent. 
+
+# ARIMA(0,2,3) Model Results and Validity
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Table 2: ARIMA0(0,2,3) Summary"}
+arima1 <- Arima(co2ts, order = c(0, 2, 3), seasonal = FALSE, include.drift = TRUE)
+summary(arima1)
+```
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 5: ARIMA(0,2,3) Residuals and Stability Test"}
+tsdisplay(arima1$residuals, main = "ARIMA(0,2,3) Residuals")
+
+Box.test(arima1$residuals, type = "Ljung-Box")
+```
+
+It is possible to observe in this test that the p-value is >0.05 indicating that the residuals are only white noise. 
+
+The residuals are within the box and close to zero, so it could be stated that the series are not autocorrelated. 
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 6: Inverse of moving average (MA) roots"}
+autoplot(arima1) + theme_classic()
+```
+
+# Descriptive Statistics
+
+```{r descstats,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Table 3: Descriptive Satistics"}
+library(moments)
+Mean <- mean(co2ts)
+Median <- median(co2ts)
+Minimum <- min(co2ts)
+Maximum <- max(co2ts)
+Sd <- sd(co2ts)
+Skewness <- skewness(co2ts)
+Kurtosis <- kurtosis(co2ts)
+descpstats <- data.frame(Mean, Median, Minimum, Maximum, Sd, Skewness, Kurtosis)
+kable(descpstats)
+```
+
+In the table above it is possible to access the time series summary. 
+
+The mean is positive and non-zero. The difference between minimum (2823484 kt) and maximum (5732999 kt) corroborates the increase of emissions in the USA from 1960 to the mid-2000s when environmental issues started to be more debated. 
+
+The negative skewness and kurtosis of 3.074317 indicate that the time series is not normally distributed.
+
+# Forecast for one period ahead (2020)
+
+```{r forecast1,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 7: Forecast short term using ARIMA(0,2,3)"}
+
+forecast1 <- forecast(arima1, h = 4)
+forecast <- forecast(arima1, h = 14)
+
+plot1 <- plot <- plot(forecast1, shaded=TRUE, shadecols= c("lightblue", "gray"), col=1, fcol='darkblue', main= "Forecasts from ARIMA (0,2,3)", ylab="CO² Emissions in kt", xlab="Year", type="l", showgap = F, flty = 1, xlim = c(1990,2020), ylim = c(4000000, 6000000)) 
+lines(forecast1$fitted, col = "red")
+legend("bottomleft", c("Forecast","Fitted", "Level 80%", "Level 95%"), cex=0.5, pch=c(16,16,16,16), col=c("darkblue","red", "gray", "lightblue"))
+
+kable(forecast1)
+
+```
+
+# Forecast long term (2030)
+
+```{r forecast,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap ="Figure 8: Forecast long term using ARIMA(0,2,3)"}
+tbl <- as.data.frame(forecast)
+
+plot <- plot(forecast, shaded=TRUE, shadecols= c("lightblue", "gray"), col=1, fcol='darkblue', main= "Forecasts from ARIMA (0,2,3)", ylab="CO² Emissions in kt", xlab="Year", type="l", showgap = F, flty = 1, xlim = c(1960,2030)) 
+lines(forecast$fitted, col = "red")
+legend("topleft", c("Forecast","Fitted", "Level 80%", "Level 95%"),cex=0.5, pch=c(16,16,16,16), col=c("darkblue","red", "gray", "lightblue"))
+
+kable(forecast)
+
+```
+
+# Evaluating ARIMA and Holt-Winters Exponential Smoothing
+
+Another forecasting model is Holt-Winters Exponential Smoothing, as it is also an effective model in adapting linearity in time series [@V2014].
+
+```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 9: Forecast long term using Holt-Winters model"}
+library(stats)
+hwforecast <- HoltWinters(log(co2ts), gamma = F)
+hwfpred <- forecast(hwforecast, h = 14)
+plot(hwfpred,showgap = F, shaded=TRUE, shadecols= c("lightblue", "gray"), col=1, fcol='darkblue', flty = 1, ylab="CO² Emissions", xlab="Year")
+lines(hwfpred$fitted, col = "red")
+legend("topleft", c("Forecast","Fitted", "Level 80%", "Level 95%"),cex=0.5, pch=c(16,16,16,16), col=c("darkblue","red", "gray", "lightblue"))
+
+
+forecastb <- Box.test(forecast, type = "Ljung-Box")
+forecastb
+hwfpredb <- Box.test(hwfpred, type = "Ljung-Box")
+hwfpredb
+```
+
+Here it can be seen that the difference between ARIMA(0,2,3) and Holt-Winters is not very significant, however, the Box-Pierce test points out that the ARIMA(0,2,3) model has a higher validity as the p-value is closer to 0. 
+
+Holt-Winters model is a recommended method when the time series is seasonal and thus not recommended when the forecast exceeds the seasonality of the time series [@V2014]. Hence, the ARIMA(0,2,3) model is more effective for the type of time series forecasting in this paper.
+
+
+# Conclusion and Political Implications
+
+Despite the projection showing a decrease in CO² emissions, measures remain insufficient to achieve carbon neutrality in the long term, although there could be an attainment of the 50–52% objective set by the US as of 2005. However, the President of the United States has now approved the “Willow Project” in March 2023, which allows for the construction of 5 drill pads for a total of 250 oil wells in Alaska [@W2023], thereby reducing the country's dependence on other nations for sources of energy. 
+
+This project not only goes against efforts to reduce CO² emissions, but it also poses risks to native Americans, wildlife and waters  in the region. According to [@N2018], there are different risks associated with oil spills that could harm local species, reduce food supplies, and contribute to the melting of glaciers. The long-term goal of this project is to produce approximately 200,000 barrels of oil per day over a 30-year period. There would be approximately 600 million barrels of oil and 287 million tonnes of CO² emissions by the end of this forecasted period [@W2023].
+
+Thereby, based solely on what is shown in Figure 8 it is recommended: 
+
+a)	endorsement of the importance of education in renewable energy and the construction of renewable energy grids such as solar panels;
+
+b)	a "carbon tax" for industries that emit CO² through polluting agents on a daily basis, as a mandatory incentive to change energy sources. This measure has already been implemented in some US states, but it is not a national requirement;
+
+c)	 more importantly, the recognition that current oil exploration plans, such as the Willow Project, will drastically change the forecast for CO² emissions.
+
+While the ARIMA(0,2,3) model has been predicted to be efficient and stable and to yield positive results in the future, it cannot be applied in multivariate time series, i.e. it is not possible to use ARIMA(p,d,q) to predict CO² emissions and other gases simultaneously or the possible increase of fossil fuel emissions due to the new project. 
+
+Furthermore, CO² emissions control remains heavily dependent on policy and economic measures that unfortunately cannot be predicted, particularly when it comes to a country that is very volatile in its decisions concerning the environment. The United States’ pursuit of energy independence through the Willow Project may result in long-term consequences that could be irreversible.
+
+
+# References
