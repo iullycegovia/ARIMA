@@ -161,10 +161,6 @@ It is possible to observe in this test that the p-value is >0.05 indicating that
 
 The residuals are within the box and close to zero, so it could be stated that the series are not autocorrelated. 
 
-```{r ,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figure 6: Inverse of moving average (MA) roots"}
-autoplot(arima1) + theme_classic()
-```
-
 # Descriptive Statistics
 
 ```{r descstats,include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Table 3: Descriptive Satistics"}
